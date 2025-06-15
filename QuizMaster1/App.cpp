@@ -2,10 +2,12 @@
 #include <cstring>
 #include <fstream>
 #include "App.h"
-#include "TrueOrFalseQuiz.h"
+#include "Quiz.h"
 #include "User.h"
 #include "Player.h"
 #include "Quiz.h"
+#include "TrueOrFalseQuestion.h"
+#include "SingleChoiceQuestion.h"
 using namespace std;
 
 App::App()
@@ -55,7 +57,7 @@ int App::getNextQuizId() {
     int lastId = 1;
 
     while (true) {
-        TrueOrFalseQuiz temp(0, nullptr, 0, nullptr, nullptr, nullptr);
+        Quiz temp(lastId);
         if (!temp.loadFromFile(infile, lastId)) break;
         lastId++;
     }
@@ -121,22 +123,18 @@ bool App::login(char* username, char* password) {
         infile.read(tempPassword, 32);
 
         if (strcmp(tempUsername, username) == 0 && strcmp(tempPassword, password) == 0) {
-            // Successful login
-            currentUser = Player();
+            currentUser = Player(tempUsername, 0);
             strcpy_s(currentUsername, sizeof(currentUsername), username);
-            currentUsername[sizeof(currentUsername) - 1] = '\0';
             infile.close();
 
             cout << "Login successful! Welcome, " << username << ".\n";
             return true;
         }
     }
-
     infile.close();
     cout << "Invalid username or password. Please try again.\n";
     return false;
 }
-
 void App::viewQuizzes()
 {
     std::ifstream infile("quizzes.txt");
@@ -151,25 +149,38 @@ void App::viewQuizzes()
     char line[LINE_SIZE];
 
     while (infile.getline(line, LINE_SIZE)) {
+        // Read quiz ID
         char id[64];
-		strcpy_s(id, sizeof(id), line);
+        strcpy_s(id, sizeof(id), line);
         id[sizeof(id) - 1] = '\0';
 
+        // Read quiz title
         if (!infile.getline(line, LINE_SIZE)) break;
         char name[128];
-		strncpy_s(name, line, sizeof(name));
+        strncpy_s(name, line, sizeof(name));
         name[sizeof(name) - 1] = '\0';
 
+        // Read number of questions
         if (!infile.getline(line, LINE_SIZE)) break;
         int numQuestions = atoi(line);
 
+        // Read question type (but we don't need to store it for this function)
+        if (!infile.getline(line, LINE_SIZE)) break;
+
         // Skip questions and answers lines
-        for (int i = 0; i < numQuestions * 2; ++i) {
+        for (int i = 0; i < numQuestions; ++i) {
+            // Skip question text
+            if (!infile.getline(line, LINE_SIZE)) break;
+            // Skip answer
             if (!infile.getline(line, LINE_SIZE)) break;
         }
 
+        // Skip points line
+        if (!infile.getline(line, LINE_SIZE)) break;
+
         std::cout << "Quiz ID: " << id
-            << ", Name: " << name << "\n";
+            << ", Name: " << name
+            << ", Questions: " << numQuestions << "\n";
     }
 }
 
@@ -185,49 +196,101 @@ void App::createQuiz()
     cin >> numOfQuestions;
     cin.ignore();
 
-    char** questions = new char* [numOfQuestions];
-    bool* answers = new bool[numOfQuestions];
-    int* questionScore = new int[numOfQuestions];
+    int quizId = getNextQuizId();
+    Quiz newQuiz(quizId, name, currentUsername);
     for (int i = 0; i < numOfQuestions; ++i) {
-        questions[i] = new char[256];
+        cout << "Enter question " << i + 1 << " type(T/F, SC, MC, ShA, MP): ";
+		char questionType[4];
+		cin.getline(questionType, 4);
+        if (strcmp(questionType, "T/F") != 0 && strcmp(questionType, "SC") != 0 &&
+            strcmp(questionType, "MC") != 0 && strcmp(questionType, "ShA") != 0 &&
+            strcmp(questionType, "MP") != 0) {
+            cout << "Invalid question type. Please enter T/F, SC, MC, ShA, or MP.\n";
+            i--; // Decrement i to repeat this question
+            continue;
+		}
+
         cout << "Enter question " << (i + 1) << ": ";
-        cin.getline(questions[i], 256);
+		char* questionText = new char[256];
+        cin.getline(questionText, 256);
+        int score = 0;
+        if (strcmp(questionType, "T/F") == 0)
+        {
+            bool QuestionsAnswer = true;
+            while (true) {
+                cout << "Enter correct answer (True/False): ";
+                char answer[6];
+                cin.getline(answer, 6);
 
-        while (true) {
-            cout << "Enter correct answer (True/False): ";
-            char answer[6];
-            cin.getline(answer, 6);
-
-            if (strcmp(answer, "True") == 0) {
-                answers[i] = true;
-                break;
+                if (strcmp(answer, "True") == 0) {
+                    QuestionsAnswer = true;
+                    break;
+                }
+                else if (strcmp(answer, "False") == 0) {
+                    QuestionsAnswer  = false;
+                    break;
+                }
+                else {
+                    cout << "Invalid input. Please enter True or False.\n";
+                }
             }
-            else if (strcmp(answer, "False") == 0) {
-                answers[i] = false;
-                break;
-            }
-            else {
-                cout << "Invalid input. Please enter True or False.\n";
-            }
+            TrueOrFalseQuestion* question = new TrueOrFalseQuestion(questionText, QuestionsAnswer, score);
+            newQuiz.addQuestion(question);
         }
 
+        if (strcmp(questionType, "SC") == 0)
+        {
+            char option1[100], option2[100], option3[100], option4[100];
+            int correctOption;
+
+            cout << "Enter option 1: ";
+            cin.getline(option1, 100);
+
+            cout << "Enter option 2: ";
+            cin.getline(option2, 100);
+
+            cout << "Enter option 3: ";
+            cin.getline(option3, 100);
+
+            cout << "Enter option 4: ";
+            cin.getline(option4, 100);
+
+            while (true) {
+                cout << "Enter correct option number (1-4): ";
+                cin >> correctOption;
+                cin.ignore(); // To consume the newline character
+
+                if (correctOption >= 1 && correctOption <= 4) {
+                    break;
+                }
+                else {
+                    cout << "Invalid input. Please enter a number between 1 and 4.\n";
+                }
+            }
+
+            SingleChoiceQuestion* question = new SingleChoiceQuestion(
+                questionText, option1, option2, option3, option4, correctOption - 1, score);
+            newQuiz.addQuestion(question);
+        }
         while (true)
         {
             cout << "Enter score for question " << (i + 1) << ": ";
-            cin >> questionScore[i];
+            cin >> score;
 			cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear the input buffer
-            if (questionScore[i] > 0) {
+            if (score > 0) {
                 break; // Valid score
             } else {
                 cout << "Score must be a positive integer. Please try again.\n";
 			}
+
         }
+
+		newQuiz.setLastQuestionScore(score);
+
 
     }
 
-    int quizId = getNextQuizId();
 
-    TrueOrFalseQuiz newQuiz(quizId, name, numOfQuestions, questions, answers, questionScore);
 	ofstream outfile("quizzes.txt", ios::out | ios::app);
     if(!outfile) {
         cerr << "No quizzes in database.\n";
@@ -235,12 +298,6 @@ void App::createQuiz()
 	}
     newQuiz.saveToFile(outfile);
     cout << "Quiz created with ID: " << quizId << endl;
-
-    for (int i = 0; i < numOfQuestions; ++i) {
-        delete[] questions[i];
-    }
-    delete[] questions;
-    delete[] answers;
 }
 
 void App::run() {
@@ -310,9 +367,9 @@ void App::run() {
             {
                 int quizId = atoi(tokens[1]);
                 std::ifstream infile("quizzes.txt");
-                TrueOrFalseQuiz quiz(quizId, nullptr, 0, nullptr, nullptr, nullptr);
+				Quiz quiz(quizId);
                 quiz.loadFromFile(infile, quizId);
-				currentUser.setXp(currentUser.getXp() + quiz.startQuiz());
+				currentUser.setXp(currentUser.getXp() + quiz.start());
                 infile.close();
 				cout << "Quiz with ID " << quizId << " completed. Your current XP: " << currentUser.getXp() << endl;
             } else 

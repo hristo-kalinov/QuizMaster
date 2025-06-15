@@ -30,7 +30,13 @@
     <ClCompile Include="Quiz.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TrueOrFalseQuiz.cpp">
+    <ClCompile Include="Question.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TrueOrFalseQuestion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SingleChoiceQuestion.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -47,7 +53,13 @@
     <ClInclude Include="Quiz.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="TrueOrFalseQuiz.h">
+    <ClInclude Include="Question.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TrueOrFalseQuestion.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SingleChoiceQuestion.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

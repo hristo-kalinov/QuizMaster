@@ -7,6 +7,8 @@ protected:
 
 public:
     User();
+    User(const User& other);
+    User& operator=(const User& other);
     virtual ~User();
 
     int getId() const;

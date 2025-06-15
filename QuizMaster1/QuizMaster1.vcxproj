@@ -125,16 +125,20 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Player.cpp" />
-    <ClCompile Include="Quiz.cpp" />
+    <ClCompile Include="Question.cpp" />
     <ClCompile Include="QuizMaster1.cpp" />
-    <ClCompile Include="TrueOrFalseQuiz.cpp" />
+    <ClCompile Include="Quiz.cpp" />
+    <ClCompile Include="SingleChoiceQuestion.cpp" />
+    <ClCompile Include="TrueOrFalseQuestion.cpp" />
     <ClCompile Include="User.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="Question.h" />
     <ClInclude Include="Quiz.h" />
-    <ClInclude Include="TrueOrFalseQuiz.h" />
+    <ClInclude Include="SingleChoiceQuestion.h" />
+    <ClInclude Include="TrueOrFalseQuestion.h" />
     <ClInclude Include="User.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,15 +1,11 @@
 1
 title
 1
-quest 1
-true
+SC
+What's the name of ur gf
+Yana
+Mitko
+Bobi
+Lara
+0
 10
-2
-title
-2
-yes quest
-true
-10
-No quest
-false
-20
