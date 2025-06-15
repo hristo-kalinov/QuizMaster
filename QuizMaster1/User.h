@@ -10,6 +10,7 @@ public:
     User(const User& other);
     User& operator=(const User& other);
     virtual ~User();
+	char* getUsername() const;
 
     int getId() const;
 };

@@ -150,40 +150,48 @@ void App::viewQuizzes()
 
     while (infile.getline(line, LINE_SIZE)) {
         // Read quiz ID
-        char id[64];
-        strcpy_s(id, sizeof(id), line);
-        id[sizeof(id) - 1] = '\0';
+        int id = atoi(line);
 
-        // Read quiz title
+        // Read quiz name (empty line after ID)
         if (!infile.getline(line, LINE_SIZE)) break;
         char name[128];
         strncpy_s(name, line, sizeof(name));
         name[sizeof(name) - 1] = '\0';
 
-        // Read number of questions
-        if (!infile.getline(line, LINE_SIZE)) break;
-        int numQuestions = atoi(line);
+        // Read number of questions (not stored directly in file, need to count)
+        int numQuestions = 0;
+        long currentPos = infile.tellg();
 
-        // Read question type (but we don't need to store it for this function)
-        if (!infile.getline(line, LINE_SIZE)) break;
-
-        // Skip questions and answers lines
-        for (int i = 0; i < numQuestions; ++i) {
-            // Skip question text
-            if (!infile.getline(line, LINE_SIZE)) break;
-            // Skip answer
-            if (!infile.getline(line, LINE_SIZE)) break;
+        // Temporary read to count questions
+        while (infile.getline(line, LINE_SIZE)) {
+            // Check if we've reached the end of this quiz
+            if (line[0] == '\0') break; // Empty line indicates end of quiz
+            
+            // Skip question type
+            if (!infile.getline(line, LINE_SIZE)) break; // Skip question text
+            if (!infile.getline(line, LINE_SIZE)) break; // Skip answer/options
+            numQuestions++;
         }
 
-        // Skip points line
-        if (!infile.getline(line, LINE_SIZE)) break;
+        // Rewind to where we were after reading the name
+        infile.clear();
+        infile.seekg(currentPos);
+
+        // Skip through the questions again (since we already counted them)
+        for (int i = 0; i < numQuestions; ++i) {
+            if (!infile.getline(line, LINE_SIZE)) break; // Skip question type
+            if (!infile.getline(line, LINE_SIZE)) break; // Skip question text
+            if (!infile.getline(line, LINE_SIZE)) break; // Skip answer/options
+        }
+
+        // Skip the empty line between quizzes
+        infile.getline(line, LINE_SIZE);
 
         std::cout << "Quiz ID: " << id
             << ", Name: " << name
             << ", Questions: " << numQuestions << "\n";
     }
 }
-
 
 void App::createQuiz()
 {
@@ -299,7 +307,15 @@ void App::createQuiz()
     newQuiz.saveToFile(outfile);
     cout << "Quiz created with ID: " << quizId << endl;
 }
-
+bool App::isLoggedIn() const {
+    
+    bool loggedIn = (currentUsername[0] != '\0');
+    if(!loggedIn)
+    {
+        cout << "You must be logged in to perform this action. Please log in or sign up.\n";
+	}
+	return loggedIn;
+}
 void App::run() {
     std::cout << "Welcome to QuizMaster!\n";
     const int MAX_INPUT_SIZE = 256;
@@ -347,11 +363,15 @@ void App::run() {
         }
         else if (strcmp(tokens[0], "quizzes") == 0)
         {
+            if (!isLoggedIn())
+                continue;
 			viewQuizzes();
         }
 
         else if (strcmp(tokens[0], "create-quiz") == 0)
         {
+            if (!isLoggedIn())
+                continue;
 			createQuiz();
         }
 
@@ -362,6 +382,8 @@ void App::run() {
         
         else if (strcmp(tokens[0], "start-quiz") == 0)
         {
+            if (!isLoggedIn())
+                continue;
             //viewQuizzes();
             if(tokenCount == 2) 
             {

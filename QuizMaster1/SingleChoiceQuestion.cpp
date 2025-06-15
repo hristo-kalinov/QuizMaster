@@ -7,7 +7,6 @@
 SingleChoiceQuestion::SingleChoiceQuestion()
     : questionText(nullptr), correctOption(0), score(0) {
 }
-// Constructor implementation
 SingleChoiceQuestion::SingleChoiceQuestion(const char* text, const char* opt1,
     const char* opt2, const char* opt3, const char* opt4, int correct, int score)
     : correctOption(correct), score(score) {
@@ -28,7 +27,6 @@ SingleChoiceQuestion::SingleChoiceQuestion(const char* text, const char* opt1,
     strcpy_s(options[3], strlen(opt4) + 1, opt4);
 }
 
-// Destructor implementation
 SingleChoiceQuestion::~SingleChoiceQuestion() {
     delete[] questionText;
     for (int i = 0; i < 4; i++) {
@@ -36,7 +34,6 @@ SingleChoiceQuestion::~SingleChoiceQuestion() {
     }
 }
 
-// ask method implementation
 void SingleChoiceQuestion::ask() const {
     std::cout << questionText << "\n";
     for (int i = 0; i < 4; i++) {
@@ -45,13 +42,11 @@ void SingleChoiceQuestion::ask() const {
     std::cout << "Your choice (1-4): ";
 }
 
-// checkAnswer method implementation
 bool SingleChoiceQuestion::checkAnswer(const char* userAnswer) const {
     int answer = atoi(userAnswer) - 1;
     return answer == correctOption;
 }
 
-// saveToFile method implementation
 void SingleChoiceQuestion::saveToFile(std::ofstream& out) const {
     out << "SC\n";
     out << questionText << "\n";
@@ -62,7 +57,6 @@ void SingleChoiceQuestion::saveToFile(std::ofstream& out) const {
     out << score << "\n";
 }
 
-// loadFromFile method implementation
 void SingleChoiceQuestion::loadFromFile(std::ifstream& in) {
     const int BUFFER_SIZE = 1024;
     char buffer[BUFFER_SIZE];
@@ -89,7 +83,6 @@ void SingleChoiceQuestion::loadFromFile(std::ifstream& in) {
     score = atoi(buffer);
 }
 
-// getScore method implementation
 int SingleChoiceQuestion::getScore() const {
     return score;
 }
@@ -98,7 +91,6 @@ void SingleChoiceQuestion::setScore(int score)
 {
     this->score = score;
 }
-// clone method implementation
 Question* SingleChoiceQuestion::clone() const {
     return new SingleChoiceQuestion(*this);
 }

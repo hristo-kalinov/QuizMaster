@@ -19,4 +19,5 @@ private:
     void handleInput(const char* input, char tokens[][32], int maxTokens, int maxTokenLen, int& tokenCount);
     void createQuiz();
     int getNextQuizId();
+	bool isLoggedIn() const;
 };

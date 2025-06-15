@@ -1,9 +1,7 @@
 #include "TrueOrFalseQuestion.h"
-#include <iostream>  // Required for std::cout
-#include <cstring>   // Required for strlen and strcpy_s/strcmp
-#include <cstdlib>   // Required for atoi
+#include <iostream>  
+#include <cstring>
 
-// Constructor implementation
 TrueOrFalseQuestion::TrueOrFalseQuestion(const char* text, bool answer, int score)
     : correctAnswer(answer), score(score) {
     if (text != nullptr)

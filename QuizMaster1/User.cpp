@@ -12,7 +12,6 @@ User::~User() {
 	delete[] password;
 }
 
-// Copy constructor
 User::User(const User& other) {
     if (other.username) {
         username = new char[strlen(other.username) + 1];
@@ -54,5 +53,10 @@ User& User::operator=(const User& other) {
         password = nullptr;
     }
 
+    
     return *this;
+}
+
+char* User::getUsername() const {
+    return username;
 }

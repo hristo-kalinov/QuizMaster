@@ -37,13 +37,8 @@ void Quiz::addQuestion(Question* question) {
     // Add the new question at the end
     newArray[numOfQuestions] = question;
 
-    // Delete the old array
     delete[] questions;
-
-    // Point to the new array
     questions = newArray;
-
-    // Increment the count of questions
     ++numOfQuestions;
 }
 
@@ -51,13 +46,13 @@ void Quiz::addQuestion(Question* question) {
 int Quiz::start() const {
     int totalScore = 0;
     for (int i = 0; i < numOfQuestions; ++i) {
-        questions[i]->ask(); // Call the virtual ask method
+        questions[i]->ask();
         char userInput[1024];
-        std::cin.getline(userInput, 1024); // Get user input
+        std::cin.getline(userInput, 1024);
 
-        if (questions[i]->checkAnswer(userInput)) { // Call the virtual checkAnswer method
+        if (questions[i]->checkAnswer(userInput)) { 
             std::cout << "Correct!\n";
-            totalScore += questions[i]->getScore(); // Call the virtual getScore method
+            totalScore += questions[i]->getScore();
         }
         else {
             std::cout << "Incorrect.\n";
@@ -67,7 +62,6 @@ int Quiz::start() const {
     return totalScore;
 }
 
-// saveToFile method implementation
 void Quiz::saveToFile(std::ofstream& out) const {
     out << id << "\n";
     out << name << "\n";
@@ -78,7 +72,6 @@ void Quiz::saveToFile(std::ofstream& out) const {
 }
 
 bool Quiz::loadFromFile(std::ifstream& in, int targetId) {
-    // First, clear any existing data
     for (int i = 0; i < numOfQuestions; ++i) {
         delete questions[i];
     }
@@ -90,32 +83,25 @@ bool Quiz::loadFromFile(std::ifstream& in, int targetId) {
     numOfQuestions = 0;
     name = nullptr;
 
-    // Read the quiz ID
     int readId;
     in >> readId;
-    in.ignore(); // Skip the newline after the ID
+    in.ignore();
 
-    // Check if this is the quiz we're looking for
     if (readId != targetId) {
-        // Not the right quiz, rewind and return false
         in.seekg(0, std::ios::beg);
         return false;
     }
 
-    // Read the quiz name
     char buffer[1024];
     in.getline(buffer, 1024);
     name = new char[strlen(buffer) + 1];
     strcpy_s(name, strlen(buffer) + 1, buffer);
 
-    // Read number of questions
     in >> numOfQuestions;
-    in.ignore(); // Skip the newline
+    in.ignore();
 
-    // Allocate array for questions
     questions = new Question * [numOfQuestions];
 
-    // Read each question
     for (int i = 0; i < numOfQuestions; ++i) {
         char questionType[32];
         in.getline(questionType, 32);
@@ -128,16 +114,12 @@ bool Quiz::loadFromFile(std::ifstream& in, int targetId) {
             questions[i] = new SingleChoiceQuestion();
         }
         else {
-            // Unknown question type - handle error
             std::cerr << "Unknown question type: " << questionType << std::endl;
             return false;
         }
 
-        // Load the question data
         questions[i]->loadFromFile(in);
     }
-
-   
 
     return true;
 }

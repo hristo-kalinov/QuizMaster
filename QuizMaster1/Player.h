@@ -5,10 +5,10 @@ class Player : public User {
 private:
     int xp;
 public:
-    Player(); // Default constructor
+    Player(); 
     Player(const char* username, const int xp);
-    Player(const Player& other); // Copy constructor
-    Player& operator=(const Player& other); // Copy assignment
+    Player(const Player& other);
+    Player& operator=(const Player& other);
     ~Player();
     void viewProfile() const;
     void viewChallenges() const;

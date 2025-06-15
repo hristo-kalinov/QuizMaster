@@ -15,7 +15,6 @@ public:
         const char* opt3, const char* opt4, int correct, int score);
     ~SingleChoiceQuestion();
 
-    // Override methods from the base Question class
     void ask() const override;
     bool checkAnswer(const char* userAnswer) const override;
     void saveToFile(std::ofstream& out) const override;
