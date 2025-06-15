@@ -49,18 +49,18 @@ void App::handleInput(const char* input, char tokens[][32], int maxTokens, int m
 }
 
 int App::getNextQuizId() {
-    std::ifstream infile("quizzes.dat");
+    std::ifstream infile("quizzes.txt");
     if (!infile) return 1;
 
-    int lastId = 0;
+    int lastId = 1;
 
     while (true) {
-        TrueOrFalseQuiz temp(0, nullptr, nullptr, 0, nullptr, nullptr);
-        if (!temp.loadFromFile(infile)) break;
-        lastId = temp.getId();
+        TrueOrFalseQuiz temp(0, nullptr, 0, nullptr, nullptr, nullptr);
+        if (!temp.loadFromFile(infile, lastId)) break;
+        lastId++;
     }
 
-    return lastId + 1;
+    return lastId;
 }
 
 
@@ -139,25 +139,40 @@ bool App::login(char* username, char* password) {
 
 void App::viewQuizzes()
 {
-    ifstream infile("quizzes.dat", ios::binary);
+    std::ifstream infile("quizzes.txt");
     if (!infile) {
-        cerr << "Error opening quizzes database.\n";
+        std::cerr << "Error opening quizzes database.\n";
         return;
     }
-    Quiz quiz;
-    char quizName[32];
-    char quizDescription[256];
-    cout << "Available quizzes:\n";
-    while (infile.read((char*)&quiz, sizeof(Quiz)))
-    {
-        infile.read(quizName, 32);
-        infile.read(quizDescription, 256);
-        cout << "Quiz ID: " << quiz.getId() << ", Name: " << quizName
-             << ", Description: " << quizDescription << "\n";
+
+    std::cout << "Available quizzes:\n";
+
+    const int LINE_SIZE = 512;
+    char line[LINE_SIZE];
+
+    while (infile.getline(line, LINE_SIZE)) {
+        char id[64];
+		strcpy_s(id, sizeof(id), line);
+        id[sizeof(id) - 1] = '\0';
+
+        if (!infile.getline(line, LINE_SIZE)) break;
+        char name[128];
+		strncpy_s(name, line, sizeof(name));
+        name[sizeof(name) - 1] = '\0';
+
+        if (!infile.getline(line, LINE_SIZE)) break;
+        int numQuestions = atoi(line);
+
+        // Skip questions and answers lines
+        for (int i = 0; i < numQuestions * 2; ++i) {
+            if (!infile.getline(line, LINE_SIZE)) break;
+        }
+
+        std::cout << "Quiz ID: " << id
+            << ", Name: " << name << "\n";
     }
-	infile.close();
-    
 }
+
 
 void App::createQuiz()
 {
@@ -170,13 +185,9 @@ void App::createQuiz()
     cin >> numOfQuestions;
     cin.ignore();
 
-    cout << "Enter quiz description: ";
-    char description[256];
-    cin.getline(description, 256);
-
     char** questions = new char* [numOfQuestions];
     bool* answers = new bool[numOfQuestions];
-
+    int* questionScore = new int[numOfQuestions];
     for (int i = 0; i < numOfQuestions; ++i) {
         questions[i] = new char[256];
         cout << "Enter question " << (i + 1) << ": ";
@@ -199,14 +210,27 @@ void App::createQuiz()
                 cout << "Invalid input. Please enter True or False.\n";
             }
         }
+
+        while (true)
+        {
+            cout << "Enter score for question " << (i + 1) << ": ";
+            cin >> questionScore[i];
+			cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear the input buffer
+            if (questionScore[i] > 0) {
+                break; // Valid score
+            } else {
+                cout << "Score must be a positive integer. Please try again.\n";
+			}
+        }
+
     }
 
     int quizId = getNextQuizId();
 
-    TrueOrFalseQuiz newQuiz(quizId, name, description, numOfQuestions, questions, answers);
-	ofstream outfile("quizzes.dat", ios::binary | ios::app);
+    TrueOrFalseQuiz newQuiz(quizId, name, numOfQuestions, questions, answers, questionScore);
+	ofstream outfile("quizzes.txt", ios::out | ios::app);
     if(!outfile) {
-        cerr << "Error opening quizzes database for writing.\n";
+        cerr << "No quizzes in database.\n";
         return;
 	}
     newQuiz.saveToFile(outfile);
@@ -277,6 +301,34 @@ void App::run() {
         else if (strcmp(tokens[0], "exit") == 0) {
             std::cout << "Goodbye!\n";
             break;
+        }
+        
+        else if (strcmp(tokens[0], "start-quiz") == 0)
+        {
+            //viewQuizzes();
+            if(tokenCount == 2) 
+            {
+                int quizId = atoi(tokens[1]);
+                std::ifstream infile("quizzes.txt");
+                TrueOrFalseQuiz quiz(quizId, nullptr, 0, nullptr, nullptr, nullptr);
+                quiz.loadFromFile(infile, quizId);
+				currentUser.setXp(currentUser.getXp() + quiz.startQuiz());
+                infile.close();
+				cout << "Quiz with ID " << quizId << " completed. Your current XP: " << currentUser.getXp() << endl;
+            } else 
+            {
+                cout << "Usage: start-quiz <quiz_id>\n";
+			}
+        }
+
+        else if (strcmp(tokens[0], "help") == 0) {
+            cout << "Available commands:\n";
+			cout << "login <username> <password> - Log in to the application\n";
+            cout << "signup <username> <password> - Sign up for a new account\n";
+            cout << "quizzes - View available quizzes\n";
+            cout << "create-quiz - Create a new quiz\n";
+            cout << "quizzes - View all quizzes\n";
+			cout << "exit - Exit the application\n";
         }
         else {
             std::cout << "Unknown command: " << tokens[0] << ". Write help to get all commands and how to use them\n";

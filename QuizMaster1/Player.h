@@ -12,4 +12,6 @@ public:
     void viewUser(int id) const;
     void startQuiz(int id, bool test, bool shuffle);
     void savePlayerToFile(const Player& player);
+    int getXp() const;
+	void setXp(int xpValue);
 };
