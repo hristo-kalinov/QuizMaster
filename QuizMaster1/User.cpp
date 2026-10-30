@@ -2,31 +2,37 @@
 #include <cstring>
 
 User::User()
+    : username(nullptr), password(nullptr)
 {
-	username = nullptr;
-	password = nullptr;
+}
+
+User::User(const char* username, const char* password)
+    : username(nullptr), password(nullptr)
+{
+    if (username) {
+        this->username = new char[strlen(username) + 1];
+        strcpy(this->username, username);
+    }
+    if (password) {
+        this->password = new char[strlen(password) + 1];
+        strcpy(this->password, password);
+    }
 }
 
 User::~User() {
-	delete[] username;
-	delete[] password;
+    delete[] username;
+    delete[] password;
 }
 
-User::User(const User& other) {
+User::User(const User& other)
+    : username(nullptr), password(nullptr) {
     if (other.username) {
         username = new char[strlen(other.username) + 1];
-        strcpy_s(username, strlen(other.username) + 1, other.username);
+        strcpy(username, other.username);
     }
-    else {
-        username = nullptr;
-    }
-
     if (other.password) {
         password = new char[strlen(other.password) + 1];
-        strcpy_s(password, strlen(other.password) + 1, other.password);
-    }
-    else {
-        password = nullptr;
+        strcpy(password, other.password);
     }
 }
 
@@ -36,27 +42,27 @@ User& User::operator=(const User& other) {
 
     delete[] username;
     delete[] password;
+    username = nullptr;
+    password = nullptr;
 
     if (other.username) {
         username = new char[strlen(other.username) + 1];
-        strcpy_s(username, strlen(other.username) + 1, other.username);
-    }
-    else {
-        username = nullptr;
+        strcpy(username, other.username);
     }
 
     if (other.password) {
         password = new char[strlen(other.password) + 1];
-        strcpy_s(password, strlen(other.password) + 1, other.password);
-    }
-    else {
-        password = nullptr;
+        strcpy(password, other.password);
     }
 
-    
     return *this;
 }
 
 char* User::getUsername() const {
     return username;
 }
+
+int User::getId() const {
+    return 0;
+}
+

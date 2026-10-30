@@ -2,18 +2,76 @@
 #include <cstring>
 #include <cstdlib> 
 #include <iostream>
+#include <limits>
 #include "TrueOrFalseQuestion.h"
 #include "SingleChoiceQuestion.h"
+
 Quiz::Quiz(int id)
+    : id(id), name(nullptr), questions(nullptr), numOfQuestions(0), author(nullptr)
 {
-    this->id = id;
 }
+
 Quiz::Quiz(int id, const char* name, const char* author)
-    : id(id), numOfQuestions(0), questions(nullptr) {
-    this->name = new char[strlen(name) + 1];
-    strcpy_s(this->name, strlen(name) + 1, name);
-    this->author = new char[strlen(author) + 1];
-	strcpy_s(this->author, strlen(author)+1, author);
+    : id(id), numOfQuestions(0), questions(nullptr), name(nullptr), author(nullptr) {
+    if (name) {
+        this->name = new char[strlen(name) + 1];
+        strcpy(this->name, name);
+    }
+    if (author) {
+        this->author = new char[strlen(author) + 1];
+        strcpy(this->author, author);
+    }
+}
+
+Quiz::Quiz(const Quiz& other)
+    : id(other.id), numOfQuestions(other.numOfQuestions), name(nullptr), author(nullptr), questions(nullptr) {
+    if (other.name) {
+        name = new char[strlen(other.name) + 1];
+        strcpy(name, other.name);
+    }
+    if (other.author) {
+        author = new char[strlen(other.author) + 1];
+        strcpy(author, other.author);
+    }
+    if (other.questions && numOfQuestions > 0) {
+        questions = new Question*[numOfQuestions];
+        for (int i = 0; i < numOfQuestions; ++i) {
+            questions[i] = other.questions[i] ? other.questions[i]->clone() : nullptr;
+        }
+    }
+}
+
+Quiz& Quiz::operator=(const Quiz& other) {
+    if (this == &other) return *this;
+
+    for (int i = 0; i < numOfQuestions; ++i) {
+        delete questions[i];
+    }
+    delete[] questions;
+    delete[] name;
+    delete[] author;
+
+    id = other.id;
+    numOfQuestions = other.numOfQuestions;
+    name = nullptr;
+    author = nullptr;
+    questions = nullptr;
+
+    if (other.name) {
+        name = new char[strlen(other.name) + 1];
+        strcpy(name, other.name);
+    }
+    if (other.author) {
+        author = new char[strlen(other.author) + 1];
+        strcpy(author, other.author);
+    }
+    if (other.questions && numOfQuestions > 0) {
+        questions = new Question*[numOfQuestions];
+        for (int i = 0; i < numOfQuestions; ++i) {
+            questions[i] = other.questions[i] ? other.questions[i]->clone() : nullptr;
+        }
+    }
+    return *this;
 }
 
 Quiz::~Quiz() {
@@ -46,6 +104,7 @@ void Quiz::addQuestion(Question* question) {
 int Quiz::start() const {
     int totalScore = 0;
     for (int i = 0; i < numOfQuestions; ++i) {
+        if (!questions[i]) continue;
         questions[i]->ask();
         char userInput[1024];
         std::cin.getline(userInput, 1024);
@@ -64,10 +123,12 @@ int Quiz::start() const {
 
 void Quiz::saveToFile(std::ofstream& out) const {
     out << id << "\n";
-    out << name << "\n";
+    out << (name ? name : "") << "\n";
     out << numOfQuestions << "\n";
     for (int i = 0; i < numOfQuestions; ++i) {
-        questions[i]->saveToFile(out);
+        if (questions[i]) {
+            questions[i]->saveToFile(out);
+        }
     }
 }
 
@@ -77,54 +138,77 @@ bool Quiz::loadFromFile(std::ifstream& in, int targetId) {
     }
     delete[] questions;
     delete[] name;
-    if (author) delete[] author;
+    delete[] author;
 
     questions = nullptr;
     numOfQuestions = 0;
     name = nullptr;
+    author = nullptr;
 
     int readId;
-    in >> readId;
-    in.ignore();
+    while (in >> readId) {
+        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    if (readId != targetId) {
-        in.seekg(0, std::ios::beg);
-        return false;
+        char buffer[1024];
+        if (!in.getline(buffer, 1024)) return false;
+
+        int numQ = 0;
+        if (!(in >> numQ)) return false;
+        in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        if (readId == targetId) {
+            this->id = readId;
+            name = new char[strlen(buffer) + 1];
+            strcpy(name, buffer);
+
+            numOfQuestions = numQ;
+            questions = new Question * [numOfQuestions];
+            for (int i = 0; i < numOfQuestions; ++i) {
+                questions[i] = nullptr;
+            }
+
+            for (int i = 0; i < numOfQuestions; ++i) {
+                char questionType[32];
+                if (!in.getline(questionType, 32)) return false;
+
+                if (strcmp(questionType, "T/F") == 0) {
+                    questions[i] = new TrueOrFalseQuestion(nullptr, true, 0);
+                }
+                else if (strcmp(questionType, "SC") == 0) {
+                    questions[i] = new SingleChoiceQuestion();
+                }
+                else {
+                    std::cerr << "Unknown question type: " << questionType << std::endl;
+                    return false;
+                }
+
+                questions[i]->loadFromFile(in);
+            }
+            return true;
+        } else {
+            // Skip questions for this non-target quiz
+            for (int i = 0; i < numQ; ++i) {
+                char questionType[32];
+                if (!in.getline(questionType, 32)) return false;
+                if (strcmp(questionType, "T/F") == 0) {
+                    TrueOrFalseQuestion dummy(nullptr, true, 0);
+                    dummy.loadFromFile(in);
+                } else if (strcmp(questionType, "SC") == 0) {
+                    SingleChoiceQuestion dummy;
+                    dummy.loadFromFile(in);
+                } else {
+                    return false;
+                }
+            }
+        }
     }
 
-    char buffer[1024];
-    in.getline(buffer, 1024);
-    name = new char[strlen(buffer) + 1];
-    strcpy_s(name, strlen(buffer) + 1, buffer);
-
-    in >> numOfQuestions;
-    in.ignore();
-
-    questions = new Question * [numOfQuestions];
-
-    for (int i = 0; i < numOfQuestions; ++i) {
-        char questionType[32];
-        in.getline(questionType, 32);
-
-        if (strcmp(questionType, "T/F") == 0) {
-            questions[i] = new TrueOrFalseQuestion(nullptr, true, 0);
-        }
-
-        else if (strcmp(questionType, "SC") == 0){
-            questions[i] = new SingleChoiceQuestion();
-        }
-        else {
-            std::cerr << "Unknown question type: " << questionType << std::endl;
-            return false;
-        }
-
-        questions[i]->loadFromFile(in);
-    }
-
-    return true;
+    return false;
 }
 
 void Quiz::setLastQuestionScore(int score)
 {
-    questions[numOfQuestions-1]->setScore(score);
+    if (numOfQuestions > 0 && questions != nullptr && questions[numOfQuestions - 1] != nullptr) {
+        questions[numOfQuestions - 1]->setScore(score);
+    }
 }

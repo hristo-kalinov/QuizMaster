@@ -1,11 +1,17 @@
 1
-title 
-1
+Computer Science
+2
 SC
-what's the best bra size?
-A
-B
-C
-you bra
-3
+What is the average time complexity of binary search?
+O(1)
+O(log n)
+O(n)
+O(n^2)
+1
 10
+T/F
+In C++, an abstract class contains at least one pure virtual function.
+true
+10
+
+

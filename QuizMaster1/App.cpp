@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <limits>
 #include "App.h"
 #include "Quiz.h"
 #include "User.h"
@@ -14,6 +15,7 @@ App::App()
 {
 	currentUsername[0] = '\0'; // Initialize currentUsername to an empty string
 }
+
 void App::handleInput(const char* input, char tokens[][32], int maxTokens, int maxTokenLen, int& tokenCount) {
     // Initialize tokens
     for (int i = 0; i < maxTokens; i++) {
@@ -22,29 +24,25 @@ void App::handleInput(const char* input, char tokens[][32], int maxTokens, int m
 
     tokenCount = 0;
     int inputPos = 0;
-    bool inWord = false;
 
     while (input[inputPos] != '\0' && tokenCount < maxTokens) {
         if (input[inputPos] != ' ' && input[inputPos] != '\t') {
-            // Start of a new word
-            if (!inWord) {
-                inWord = true;
-                int tokenPos = 0;
+            int tokenPos = 0;
 
-                // Copy characters until space or end of string
-                while (input[inputPos] != '\0' &&
-                    input[inputPos] != ' ' &&
-                    input[inputPos] != '\t' &&
-                    tokenPos < maxTokenLen - 1) {
-                    tokens[tokenCount][tokenPos++] = input[inputPos++];
+            // Copy characters until space or end of string
+            while (input[inputPos] != '\0' &&
+                input[inputPos] != ' ' &&
+                input[inputPos] != '\t') {
+                if (tokenPos < maxTokenLen - 1) {
+                    tokens[tokenCount][tokenPos++] = input[inputPos];
                 }
-                tokens[tokenCount][tokenPos] = '\0'; // Null-terminate
-                tokenCount++;
+                inputPos++;
             }
+            tokens[tokenCount][tokenPos] = '\0'; // Null-terminate
+            tokenCount++;
         }
         else {
             // Skip whitespace
-            inWord = false;
             inputPos++;
         }
     }
@@ -54,39 +52,59 @@ int App::getNextQuizId() {
     std::ifstream infile("quizzes.txt");
     if (!infile) return 1;
 
-    int lastId = 1;
+    int maxId = 0;
+    int readId;
 
-    while (true) {
-        Quiz temp(lastId);
-        if (!temp.loadFromFile(infile, lastId)) break;
-        lastId++;
+    while (infile >> readId) {
+        if (readId > maxId) maxId = readId;
+        infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        char buffer[1024];
+        if (!infile.getline(buffer, 1024)) break;
+
+        int numQ = 0;
+        if (!(infile >> numQ)) break;
+        infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        for (int i = 0; i < numQ; ++i) {
+            char questionType[32];
+            if (!infile.getline(questionType, 32)) break;
+            if (strcmp(questionType, "T/F") == 0) {
+                TrueOrFalseQuestion dummy(nullptr, true, 0);
+                dummy.loadFromFile(infile);
+            } else if (strcmp(questionType, "SC") == 0) {
+                SingleChoiceQuestion dummy;
+                dummy.loadFromFile(infile);
+            }
+        }
     }
 
-    return lastId;
+    infile.close();
+    return maxId + 1;
 }
-
 
 void App::signup(char* username, char* password) {
     // Check if username already exists
     ifstream infile("users.dat", ios::binary);
-    User tempUser;
+    char dummyUser[sizeof(User)];
     char tempUsername[32];
     char tempPassword[32];
 
-    while (infile.read((char*)&tempUser, sizeof(User))) {
-        infile.read(tempUsername, 32);
-        infile.read(tempPassword, 32);
+    if (infile) {
+        while (infile.read(dummyUser, sizeof(dummyUser))) {
+            infile.read(tempUsername, 32);
+            tempUsername[31] = '\0';
+            infile.read(tempPassword, 32);
+            tempPassword[31] = '\0';
 
-        if (strcmp(tempUsername, username) == 0) {
-            cout << "Username already exists. Please choose a different username.\n";
-            infile.close();
-            return;
+            if (strcmp(tempUsername, username) == 0) {
+                cout << "Username already exists. Please choose a different username.\n";
+                infile.close();
+                return;
+            }
         }
+        infile.close();
     }
-    infile.close();
-
-    // Create new user
-    User newUser;
 
     // Open file in append mode
     ofstream outfile("users.dat", ios::binary | ios::app);
@@ -97,9 +115,15 @@ void App::signup(char* username, char* password) {
     }
 
     // Write user data to binary file
-    outfile.write((char*)&newUser, sizeof(User));
-    outfile.write(username, 32);
-    outfile.write(password, 32);
+    char dummy[sizeof(User)] = {0};
+    char safeUser[32] = {0};
+    char safePass[32] = {0};
+    strncpy(safeUser, username, 31);
+    strncpy(safePass, password, 31);
+
+    outfile.write(dummy, sizeof(dummy));
+    outfile.write(safeUser, 32);
+    outfile.write(safePass, 32);
 
     outfile.close();
 
@@ -114,17 +138,19 @@ bool App::login(char* username, char* password) {
         return false;
     }
 
-    User tempUser;
+    char dummyUser[sizeof(User)];
     char tempUsername[32];
     char tempPassword[32];
 
-    while (infile.read((char*)&tempUser, sizeof(User))) {
+    while (infile.read(dummyUser, sizeof(dummyUser))) {
         infile.read(tempUsername, 32);
+        tempUsername[31] = '\0';
         infile.read(tempPassword, 32);
+        tempPassword[31] = '\0';
 
         if (strcmp(tempUsername, username) == 0 && strcmp(tempPassword, password) == 0) {
             currentUser = Player(tempUsername, 0);
-            strcpy_s(currentUsername, sizeof(currentUsername), username);
+            strcpy(currentUsername, username);
             infile.close();
 
             cout << "Login successful! Welcome, " << username << ".\n";
@@ -135,6 +161,7 @@ bool App::login(char* username, char* password) {
     cout << "Invalid username or password. Please try again.\n";
     return false;
 }
+
 void App::viewQuizzes()
 {
     std::ifstream infile("quizzes.txt");
@@ -145,52 +172,34 @@ void App::viewQuizzes()
 
     std::cout << "Available quizzes:\n";
 
-    const int LINE_SIZE = 512;
-    char line[LINE_SIZE];
+    int id;
+    while (infile >> id) {
+        infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    while (infile.getline(line, LINE_SIZE)) {
-        // Read quiz ID
-        int id = atoi(line);
-
-        // Read quiz name (empty line after ID)
-        if (!infile.getline(line, LINE_SIZE)) break;
         char name[128];
-        strncpy_s(name, line, sizeof(name));
-        name[sizeof(name) - 1] = '\0';
+        if (!infile.getline(name, sizeof(name))) break;
 
-        // Read number of questions (not stored directly in file, need to count)
         int numQuestions = 0;
-        long currentPos = infile.tellg();
-
-        // Temporary read to count questions
-        while (infile.getline(line, LINE_SIZE)) {
-            // Check if we've reached the end of this quiz
-            if (line[0] == '\0') break; // Empty line indicates end of quiz
-            
-            // Skip question type
-            if (!infile.getline(line, LINE_SIZE)) break; // Skip question text
-            if (!infile.getline(line, LINE_SIZE)) break; // Skip answer/options
-            numQuestions++;
-        }
-
-        // Rewind to where we were after reading the name
-        infile.clear();
-        infile.seekg(currentPos);
-
-        // Skip through the questions again (since we already counted them)
-        for (int i = 0; i < numQuestions; ++i) {
-            if (!infile.getline(line, LINE_SIZE)) break; // Skip question type
-            if (!infile.getline(line, LINE_SIZE)) break; // Skip question text
-            if (!infile.getline(line, LINE_SIZE)) break; // Skip answer/options
-        }
-
-        // Skip the empty line between quizzes
-        infile.getline(line, LINE_SIZE);
+        if (!(infile >> numQuestions)) break;
+        infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
         std::cout << "Quiz ID: " << id
             << ", Name: " << name
             << ", Questions: " << numQuestions << "\n";
+
+        for (int i = 0; i < numQuestions; ++i) {
+            char questionType[32];
+            if (!infile.getline(questionType, sizeof(questionType))) break;
+            if (strcmp(questionType, "T/F") == 0) {
+                TrueOrFalseQuestion dummy(nullptr, true, 0);
+                dummy.loadFromFile(infile);
+            } else if (strcmp(questionType, "SC") == 0) {
+                SingleChoiceQuestion dummy;
+                dummy.loadFromFile(infile);
+            }
+        }
     }
+    infile.close();
 }
 
 void App::createQuiz()
@@ -199,43 +208,50 @@ void App::createQuiz()
     char name[32];
     cin.getline(name, 32);
 
-    cout << "Enter number of questions: ";
-    int numOfQuestions;
-    cin >> numOfQuestions;
-    cin.ignore();
+    int numOfQuestions = 0;
+    while (true) {
+        cout << "Enter number of questions: ";
+        if (cin >> numOfQuestions && numOfQuestions > 0) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            break;
+        }
+        cout << "Invalid number of questions. Please enter a positive integer.\n";
+        cin.clear();
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    }
 
     int quizId = getNextQuizId();
     Quiz newQuiz(quizId, name, currentUsername);
     for (int i = 0; i < numOfQuestions; ++i) {
-        cout << "Enter question " << i + 1 << " type(T/F, SC, MC, ShA, MP): ";
-		char questionType[4];
-		cin.getline(questionType, 4);
-        if (strcmp(questionType, "T/F") != 0 && strcmp(questionType, "SC") != 0 &&
-            strcmp(questionType, "MC") != 0 && strcmp(questionType, "ShA") != 0 &&
-            strcmp(questionType, "MP") != 0) {
-            cout << "Invalid question type. Please enter T/F, SC, MC, ShA, or MP.\n";
-            i--; // Decrement i to repeat this question
-            continue;
-		}
+        char questionType[16];
+        while (true) {
+            cout << "Enter question " << (i + 1) << " type (T/F, SC): ";
+            cin.getline(questionType, sizeof(questionType));
+            if (strcmp(questionType, "T/F") == 0 || strcmp(questionType, "SC") == 0) {
+                break;
+            }
+            cout << "Invalid question type. Please enter T/F or SC.\n";
+        }
 
         cout << "Enter question " << (i + 1) << ": ";
-		char* questionText = new char[256];
-        cin.getline(questionText, 256);
+        char questionText[256];
+        cin.getline(questionText, sizeof(questionText));
         int score = 0;
+
         if (strcmp(questionType, "T/F") == 0)
         {
             bool QuestionsAnswer = true;
             while (true) {
                 cout << "Enter correct answer (True/False): ";
-                char answer[6];
-                cin.getline(answer, 6);
+                char answer[16];
+                cin.getline(answer, sizeof(answer));
 
-                if (strcmp(answer, "True") == 0) {
+                if (strcmp(answer, "True") == 0 || strcmp(answer, "true") == 0) {
                     QuestionsAnswer = true;
                     break;
                 }
-                else if (strcmp(answer, "False") == 0) {
-                    QuestionsAnswer  = false;
+                else if (strcmp(answer, "False") == 0 || strcmp(answer, "false") == 0) {
+                    QuestionsAnswer = false;
                     break;
                 }
                 else {
@@ -245,8 +261,7 @@ void App::createQuiz()
             TrueOrFalseQuestion* question = new TrueOrFalseQuestion(questionText, QuestionsAnswer, score);
             newQuiz.addQuestion(question);
         }
-
-        if (strcmp(questionType, "SC") == 0)
+        else if (strcmp(questionType, "SC") == 0)
         {
             char option1[100], option2[100], option3[100], option4[100];
             int correctOption;
@@ -265,14 +280,14 @@ void App::createQuiz()
 
             while (true) {
                 cout << "Enter correct option number (1-4): ";
-                cin >> correctOption;
-                cin.ignore(); // To consume the newline character
-
-                if (correctOption >= 1 && correctOption <= 4) {
+                if (cin >> correctOption && correctOption >= 1 && correctOption <= 4) {
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
                     break;
                 }
                 else {
                     cout << "Invalid input. Please enter a number between 1 and 4.\n";
+                    cin.clear();
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n');
                 }
             }
 
@@ -280,42 +295,41 @@ void App::createQuiz()
                 questionText, option1, option2, option3, option4, correctOption - 1, score);
             newQuiz.addQuestion(question);
         }
+
         while (true)
         {
             cout << "Enter score for question " << (i + 1) << ": ";
-            cin >> score;
-			cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear the input buffer
-            if (score > 0) {
-                break; // Valid score
+            if (cin >> score && score > 0) {
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+                break;
             } else {
                 cout << "Score must be a positive integer. Please try again.\n";
-			}
-
+                cin.clear();
+                cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            }
         }
 
-		newQuiz.setLastQuestionScore(score);
-
-
+        newQuiz.setLastQuestionScore(score);
     }
 
-
-	ofstream outfile("quizzes.txt", ios::out | ios::app);
-    if(!outfile) {
-        cerr << "No quizzes in database.\n";
+    ofstream outfile("quizzes.txt", ios::out | ios::app);
+    if (!outfile) {
+        cerr << "Error opening quizzes file for writing.\n";
         return;
-	}
+    }
     newQuiz.saveToFile(outfile);
+    outfile.close();
     cout << "Quiz created with ID: " << quizId << endl;
 }
 bool App::isLoggedIn() const {
-    
     bool loggedIn = (currentUsername[0] != '\0');
-    if(!loggedIn)
+    if (!loggedIn)
     {
         cout << "You must be logged in to perform this action. Please log in or sign up.\n";
-	}
-	return loggedIn;
+    }
+    return loggedIn;
 }
+
 void App::run() {
     std::cout << "Welcome to QuizMaster!\n";
     const int MAX_INPUT_SIZE = 256;
@@ -365,14 +379,14 @@ void App::run() {
         {
             if (!isLoggedIn())
                 continue;
-			viewQuizzes();
+            viewQuizzes();
         }
 
         else if (strcmp(tokens[0], "create-quiz") == 0)
         {
             if (!isLoggedIn())
                 continue;
-			createQuiz();
+            createQuiz();
         }
 
         else if (strcmp(tokens[0], "exit") == 0) {
@@ -384,30 +398,37 @@ void App::run() {
         {
             if (!isLoggedIn())
                 continue;
-            //viewQuizzes();
-            if(tokenCount == 2) 
+
+            if (tokenCount == 2) 
             {
                 int quizId = atoi(tokens[1]);
                 std::ifstream infile("quizzes.txt");
-				Quiz quiz(quizId);
-                quiz.loadFromFile(infile, quizId);
-				currentUser.setXp(currentUser.getXp() + quiz.start());
-                infile.close();
-				cout << "Quiz with ID " << quizId << " completed. Your current XP: " << currentUser.getXp() << endl;
+                if (!infile) {
+                    cout << "Error opening quizzes database.\n";
+                } else {
+                    Quiz quiz(quizId);
+                    if (quiz.loadFromFile(infile, quizId)) {
+                        currentUser.setXp(currentUser.getXp() + quiz.start());
+                        cout << "Quiz with ID " << quizId << " completed. Your current XP: " << currentUser.getXp() << endl;
+                    } else {
+                        cout << "Quiz with ID " << quizId << " not found.\n";
+                    }
+                    infile.close();
+                }
             } else 
             {
                 cout << "Usage: start-quiz <quiz_id>\n";
-			}
+            }
         }
 
         else if (strcmp(tokens[0], "help") == 0) {
             cout << "Available commands:\n";
-			cout << "login <username> <password> - Log in to the application\n";
+            cout << "login <username> <password> - Log in to the application\n";
             cout << "signup <username> <password> - Sign up for a new account\n";
             cout << "quizzes - View available quizzes\n";
             cout << "create-quiz - Create a new quiz\n";
-            cout << "quizzes - View all quizzes\n";
-			cout << "exit - Exit the application\n";
+            cout << "start-quiz <quiz_id> - Start a quiz\n";
+            cout << "exit - Exit the application\n";
         }
         else {
             std::cout << "Unknown command: " << tokens[0] << ". Write help to get all commands and how to use them\n";

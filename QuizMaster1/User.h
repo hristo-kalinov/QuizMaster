@@ -7,10 +7,12 @@ protected:
 
 public:
     User();
+    User(const char* username, const char* password = nullptr);
     User(const User& other);
     User& operator=(const User& other);
     virtual ~User();
-	char* getUsername() const;
+    char* getUsername() const;
 
     int getId() const;
 };
+

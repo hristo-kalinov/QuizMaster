@@ -6,25 +6,74 @@
 
 SingleChoiceQuestion::SingleChoiceQuestion()
     : questionText(nullptr), correctOption(0), score(0) {
+    for (int i = 0; i < 4; i++) {
+        options[i] = nullptr;
+    }
 }
+
 SingleChoiceQuestion::SingleChoiceQuestion(const char* text, const char* opt1,
     const char* opt2, const char* opt3, const char* opt4, int correct, int score)
-    : correctOption(correct), score(score) {
+    : correctOption(correct), score(score), questionText(nullptr) {
 
-    questionText = new char[strlen(text) + 1];
-    strcpy_s(questionText, strlen(text) + 1, text);
+    for (int i = 0; i < 4; i++) {
+        options[i] = nullptr;
+    }
 
-    options[0] = new char[strlen(opt1) + 1];
-    strcpy_s(options[0], strlen(opt1) + 1, opt1);
+    if (text) {
+        questionText = new char[strlen(text) + 1];
+        strcpy(questionText, text);
+    }
 
-    options[1] = new char[strlen(opt2) + 1];
-    strcpy_s(options[1], strlen(opt2) + 1, opt2);
+    const char* opts[4] = {opt1, opt2, opt3, opt4};
+    for (int i = 0; i < 4; i++) {
+        if (opts[i]) {
+            options[i] = new char[strlen(opts[i]) + 1];
+            strcpy(options[i], opts[i]);
+        }
+    }
+}
 
-    options[2] = new char[strlen(opt3) + 1];
-    strcpy_s(options[2], strlen(opt3) + 1, opt3);
+SingleChoiceQuestion::SingleChoiceQuestion(const SingleChoiceQuestion& other)
+    : correctOption(other.correctOption), score(other.score), questionText(nullptr) {
+    for (int i = 0; i < 4; i++) {
+        options[i] = nullptr;
+    }
+    if (other.questionText) {
+        questionText = new char[strlen(other.questionText) + 1];
+        strcpy(questionText, other.questionText);
+    }
+    for (int i = 0; i < 4; i++) {
+        if (other.options[i]) {
+            options[i] = new char[strlen(other.options[i]) + 1];
+            strcpy(options[i], other.options[i]);
+        }
+    }
+}
 
-    options[3] = new char[strlen(opt4) + 1];
-    strcpy_s(options[3], strlen(opt4) + 1, opt4);
+SingleChoiceQuestion& SingleChoiceQuestion::operator=(const SingleChoiceQuestion& other) {
+    if (this == &other) return *this;
+
+    delete[] questionText;
+    questionText = nullptr;
+    for (int i = 0; i < 4; i++) {
+        delete[] options[i];
+        options[i] = nullptr;
+    }
+
+    correctOption = other.correctOption;
+    score = other.score;
+
+    if (other.questionText) {
+        questionText = new char[strlen(other.questionText) + 1];
+        strcpy(questionText, other.questionText);
+    }
+    for (int i = 0; i < 4; i++) {
+        if (other.options[i]) {
+            options[i] = new char[strlen(other.options[i]) + 1];
+            strcpy(options[i], other.options[i]);
+        }
+    }
+    return *this;
 }
 
 SingleChoiceQuestion::~SingleChoiceQuestion() {
@@ -35,23 +84,28 @@ SingleChoiceQuestion::~SingleChoiceQuestion() {
 }
 
 void SingleChoiceQuestion::ask() const {
-    std::cout << questionText << "\n";
+    if (questionText) {
+        std::cout << questionText << "\n";
+    }
     for (int i = 0; i < 4; i++) {
-        std::cout << (i + 1) << ") " << options[i] << "\n";
+        if (options[i]) {
+            std::cout << (i + 1) << ") " << options[i] << "\n";
+        }
     }
     std::cout << "Your choice (1-4): ";
 }
 
 bool SingleChoiceQuestion::checkAnswer(const char* userAnswer) const {
+    if (!userAnswer) return false;
     int answer = atoi(userAnswer) - 1;
     return answer == correctOption;
 }
 
 void SingleChoiceQuestion::saveToFile(std::ofstream& out) const {
     out << "SC\n";
-    out << questionText << "\n";
+    out << (questionText ? questionText : "") << "\n";
     for (int i = 0; i < 4; i++) {
-        out << options[i] << "\n";
+        out << (options[i] ? options[i] : "") << "\n";
     }
     out << correctOption << "\n";
     out << score << "\n";
@@ -61,26 +115,32 @@ void SingleChoiceQuestion::loadFromFile(std::ifstream& in) {
     const int BUFFER_SIZE = 1024;
     char buffer[BUFFER_SIZE];
 
-    if (questionText) delete[] questionText;
+    delete[] questionText;
+    questionText = nullptr;
     for (int i = 0; i < 4; i++) {
-        if (options[i]) delete[] options[i];
+        delete[] options[i];
+        options[i] = nullptr;
     }
 
-    in.getline(buffer, BUFFER_SIZE);
-    questionText = new char[strlen(buffer) + 1];
-    strcpy_s(questionText, strlen(buffer) + 1, buffer);
-
-    for (int i = 0; i < 4; i++) {
-        in.getline(buffer, BUFFER_SIZE);
-        options[i] = new char[strlen(buffer) + 1];
-        strcpy_s(options[i], strlen(buffer) + 1, buffer);
+    if (in.getline(buffer, BUFFER_SIZE)) {
+        questionText = new char[strlen(buffer) + 1];
+        strcpy(questionText, buffer);
     }
 
-    in.getline(buffer, BUFFER_SIZE);
-    correctOption = atoi(buffer);
+    for (int i = 0; i < 4; i++) {
+        if (in.getline(buffer, BUFFER_SIZE)) {
+            options[i] = new char[strlen(buffer) + 1];
+            strcpy(options[i], buffer);
+        }
+    }
 
-    in.getline(buffer, BUFFER_SIZE);
-    score = atoi(buffer);
+    if (in.getline(buffer, BUFFER_SIZE)) {
+        correctOption = atoi(buffer);
+    }
+
+    if (in.getline(buffer, BUFFER_SIZE)) {
+        score = atoi(buffer);
+    }
 }
 
 int SingleChoiceQuestion::getScore() const {

@@ -9,6 +9,8 @@ private:
 
 public:
     TrueOrFalseQuestion(const char* text, bool answer, int score);
+    TrueOrFalseQuestion(const TrueOrFalseQuestion& other);
+    TrueOrFalseQuestion& operator=(const TrueOrFalseQuestion& other);
     ~TrueOrFalseQuestion();
 
     // Override methods from the base Question class

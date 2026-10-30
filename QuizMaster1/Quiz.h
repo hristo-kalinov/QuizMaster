@@ -15,6 +15,8 @@ private:
 public:
     Quiz(int id);
     Quiz(int id, const char* name, const char* author);
+    Quiz(const Quiz& other);
+    Quiz& operator=(const Quiz& other);
     ~Quiz();
 
     void addQuestion(Question * question);

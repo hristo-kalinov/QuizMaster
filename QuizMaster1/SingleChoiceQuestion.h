@@ -13,6 +13,8 @@ public:
 	SingleChoiceQuestion();
     SingleChoiceQuestion(const char* text, const char* opt1, const char* opt2,
         const char* opt3, const char* opt4, int correct, int score);
+    SingleChoiceQuestion(const SingleChoiceQuestion& other);
+    SingleChoiceQuestion& operator=(const SingleChoiceQuestion& other);
     ~SingleChoiceQuestion();
 
     void ask() const override;
